@@ -161,3 +161,31 @@ def extract_file_id(web_view_link):
     file_id = web_view_link.split('/d/')[1].split('/')[0]
     return file_id
 
+
+def get_json_files_from_drive(drive_service, parent_folder_id="1kNSCbyeI5_M3Bhhg3dBkZSN5RJtIkWJ-"):
+    """
+    Retrieve JSON files from a specified Google Drive folder.
+
+    Args:
+        drive_service (googleapiclient.discovery.Resource): Authenticated Google Drive API service instance.
+        parent_folder_id (str): The ID of the Google Drive folder to search in (default is a sample folder ID).
+
+    Returns:
+        list: A list of files (id, name) that are JSON files in the specified folder.
+    """
+    
+    # Define query to find JSON files in the folder
+    query = f"'{parent_folder_id}' in parents and mimeType='application/json'"
+    
+    try:
+        # Fetch the list of files that match the query
+        results = drive_service.files().list(q=query, fields="files(id, name)").execute()
+        files = results.get('files', [])
+        
+        # Return the list of JSON files found
+        return files
+
+    except Exception as e:
+        # Handle any errors that occur during the API call
+        print(f"An error occurred while retrieving files: {e}")
+        return []
