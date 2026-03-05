@@ -1,62 +1,153 @@
-# Neutralising the Economic Rewards of Disinformation (NERD): Dataset Construction and Analysis
+# NERD: Neutralising the Economic Rewards of Disinformation
 
-This repository contains the code and resources for the **Neutralising the Economic Rewards of Disinformation (NERD)** project. The project focuses on building datasets to analyze the economic impact of disinformation websites, focusing on their advertisements, articles, and monetization strategies. By exploring how these websites generate revenue and the associated disinformation narratives, this project aims to provide valuable insights into combating the spread of false information.
+An end-to-end data pipeline that uses **GPT-4o Vision** to extract structured datasets from multilingual news website screenshots, combined with statistical analysis and NLP to map the advertising and monetization ecosystem of disinformation websites — specifically around the 2024 EU elections.
 
-## Table of Contents
-1. [Notebooks Folder](#notebooks-folder)
-   1. [ads_dataset_generation](#ads_dataset_generation)
-   2. [monetization_dataset_generation](#monetization_dataset_generation)
-   3. [analysis](#analysis)
-2. [utils Folder](#utils-folder)
-3. [Configuration](#configuration)
-4. [Usage](#usage)
-5. [Documentation](#documentation)
+---
 
+## What This Project Does
 
+Disinformation websites generate revenue through advertisements, subscriptions, and donations. This project builds tooling to answer: *what ads run alongside disinformation content, and how do these sites monetize?*
 
-## Notebooks Folder
+The pipeline:
+1. **Ingests** thousands of screenshots of EU election-related disinformation articles (stored in Google Drive)
+2. **Extracts** structured data (ads, article text, sentiment, narrative, monetization strategies) using the GPT-4o Vision API
+3. **Analyses** patterns: which advertisers appear on disinformation sites, what political narratives dominate, and how these sites earn money
 
-### 1. **ads_dataset_generation/**
-This folder contains the Jupyter notebook for generating datasets related to ads and articles using screenshot data.
+---
 
-- **ads_dataset_generation.ipynb**: This notebook extracts ad-related data from screenshots and processes it into a structured format for analysis.
+## Key Technical Achievements
 
-### 2. **monetization_dataset_generation/**
-This folder contains notebooks related to monetization dataset generation, focusing on website data extraction.
+| Area | What was built |
+|---|---|
+| **Multi-modal AI pipeline** | GPT-4o Vision extracts structured data from multilingual screenshots — no OCR, no manual labeling |
+| **Structured LLM outputs** | Pydantic models + OpenAI's `beta.chat.completions.parse` for reliable, typed API responses |
+| **Google Drive integration** | Automated folder traversal, image download, and temp file management via Drive API |
+| **Web scraping** | Selenium + BeautifulSoup to extract monetization data from live disinformation websites |
+| **NLP & visualisation** | Sentiment/tone analysis, keyword frequency, t-SNE embedding visualisation of article themes |
+| **Cross-dataset analysis** | Linked ad placements to article content, revealing which ad categories co-occur with specific disinformation narratives |
 
-- **monetization_dataset_generation.ipynb**: Extracts websites from the raw data and removes links that point to social media platforms like Facebook and X (formerly Twitter). This ensures only relevant websites are included in the monetization analysis.
-- **generate_monetization_data.ipynb**: Generates monetization-related datasets from the filtered website data, focusing on how disinformation websites generate revenue.
+---
 
-### 3. **analysis/**
-This folder contains Python notebooks for analyzing the datasets related to advertisements, articles, and combined data.
+## Results
 
-- **ads_analysis.ipynb**: Analyzes the ad-related dataset, focusing on ad placement, product distribution, company representation, and trends.
-- **articles_analysis.ipynb**: Analyzes the article dataset, exploring publication sources, author information, and trends in article content.
-- **combined_analysis.ipynb**: Combines the analysis of both ads and articles to identify correlations and patterns between advertisement content and article narratives.
+- Processed **700+ screenshots** of disinformation news articles across **13+ languages**
+- Built three structured datasets: **ads**, **articles**, and **monetization** data
+- Identified **political campaign ads** running alongside anti-EU disinformation narratives
+- Mapped monetization methods (direct donations, subscriptions, product sales, advertising) across 250+ disinformation websites
+- Uncovered sentiment and tone patterns (fear-mongering, persuasive language) correlated with specific ad categories
 
-## utils Folder
+---
 
-The `utils` folder contains various utility scripts that support the data extraction and processing pipeline.
+## Project Structure
 
-- **google_drive_utils.py**: Provides functions for extracting folders and files from Google Drive, allowing for easy access to raw data.
-- **temp_folder_utils.py**: Manages the creation and deletion of temporary folders during the data processing workflow.
+```
+nerd-data-analysis/
+├── notebooks/
+│   ├── ads_dataset_generation/
+│   │   └── generate_articles_data_from_images.ipynb   # Core pipeline: screenshots → structured CSV
+│   ├── monetization_dataset_generation/
+│   │   └── extract_monetization_data.ipynb            # Scrapes monetization pages, extracts payment data
+│   └── analysis/
+│       ├── ads_dataset_statistics.ipynb               # Ad placement, product, company distribution
+│       ├── articles_data_statistics.ipynb             # Article length, sentiment, tone, keyword analysis
+│       └── combined_analysis.ipynb                    # Cross-dataset: ads ↔ article narrative correlation
+├── utils/
+│   ├── google_drive_utils.py                          # Drive API helpers: list folders, download files
+│   └── temp_folder_utils.py                           # Temp directory lifecycle management
+├── config/
+│   └── prompts.json                                   # GPT-4o prompts for ad and article extraction
+├── .env.example                                       # Environment variable template
+└── requirements.txt
+```
 
-## Configuration
+---
 
-The `config` folder contains configuration files such as `prompt.json`, which holds the prompts for extracting advertisement and article data to be passed to the GPT-4 API for further processing.
+## Pipeline Overview
 
-## Usage
+### 1. Data Extraction (`ads_dataset_generation`)
 
-1. Clone this repository to your local machine:
-   ```bash
-   git clone <repository_url>
+```
+Google Drive (screenshot folders)
+        ↓  google_drive_utils.py
+Download images to temp folder
+        ↓  GPT-4o Vision API
+Extract ads + article data (Pydantic-validated)
+        ↓
+Save to CSV datasets/
+```
 
-2. Install the required dependencies:
+Each screenshot folder represents one disinformation article. The pipeline:
+- Lists all folders via the Drive API
+- Downloads images to a local temp folder
+- Sends all images for a given article to GPT-4o with structured prompts
+- Parses the response into `Advertisement` and `NewsArticleData` Pydantic models
+- Saves to CSV
 
-    `pip install -r requirements.txt`
+### 2. Monetization Extraction (`monetization_dataset_generation`)
 
-3. You can start by running the Jupyter notebooks in the notebooks/ folder, depending on which dataset you want to generate or analyze.
+- Loads a curated list of disinformation website monetization URLs (donation pages, subscription pages, shop pages)
+- Uses Selenium to render JavaScript-heavy pages
+- Sends page text + links to GPT-4o-mini with a donation/product-sales prompt
+- Extracts payment platforms, donation methods, subscription plans, etc.
 
+### 3. Analysis (`analysis`)
 
-## Documentation
-Detailed documentation explaining how the advertisement, article, and monetization-related datasets were generated, along with the methodology used, can be found in the docs/ folder
+- **Ads analysis**: top companies, products, ad placements, political ad filter
+- **Articles analysis**: headline/text length distribution, publishing agencies, keyword frequency, t-SNE keyword clustering, sentiment/tone distribution
+- **Combined analysis**: merge ads and articles by image URL to correlate ad content with article narrative
+
+---
+
+## Setup
+
+### Prerequisites
+
+- Python 3.9+
+- A Google Cloud service account with Drive API access (download credentials as `config/credentials.json`)
+- An OpenAI API key with GPT-4o access
+
+### Installation
+
+```bash
+git clone <repository_url>
+cd nerd-data-analysis
+pip install -r requirements.txt
+```
+
+### Configuration
+
+```bash
+cp .env.example .env
+# Edit .env and fill in your API keys
+```
+
+The `.env` file needs:
+```
+DRIVE_CREDENTIALS="../config/credentials.json"
+SCOPES="https://www.googleapis.com/auth/drive"
+OPENAI_API_KEY="sk-..."
+```
+
+### Running the Notebooks
+
+Start with `notebooks/ads_dataset_generation/generate_articles_data_from_images.ipynb` to generate the raw datasets, then run the analysis notebooks in `notebooks/analysis/`.
+
+For the analysis notebooks, update the data path variables at the top of each notebook to point to your dataset files.
+
+---
+
+## Tech Stack
+
+- **AI/ML**: OpenAI GPT-4o Vision, Sentence Transformers, scikit-learn (t-SNE)
+- **Data**: pandas, numpy
+- **Visualisation**: matplotlib, seaborn, plotly
+- **APIs**: Google Drive API v3, OpenAI API
+- **Web scraping**: Selenium, BeautifulSoup
+- **Validation**: Pydantic v2
+- **Infrastructure**: Google Colab / Jupyter, python-dotenv
+
+---
+
+## Background
+
+This work is part of the **NERD (Neutralising the Economic Rewards of Disinformation)** research initiative, which studies how disinformation websites generate revenue and how those revenue streams can be disrupted. The dataset focuses on EU election-related disinformation content collected in May–June 2024.
